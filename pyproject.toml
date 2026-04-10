@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fish-slack"
+version = "0.1.0"
+description = "A terminal fish-slacking tool that disguises novel reading as Claude Code work"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "You"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "rich>=13.7.0",
+    "keyboard>=0.13.5",
+]
+
+[project.scripts]
+fish-slack = "fish_slack.main:main"
+
+[project.urls]
+Homepage = "https://github.com/you/fish-slack"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["fish_slack*"]
