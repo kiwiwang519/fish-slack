@@ -47,24 +47,32 @@ Thinking...
 ### 安装
 
 ```bash
-pip install fish-slack
+# 从 GitHub 安装 (推荐)
+pip install git+https://github.com/kiwiwang519/fish-slack.git
+
+# 或者手动克隆安装
+git clone https://github.com/kiwiwang519/fish-slack.git
+cd fish-slack
+pip install .
 ```
 
 ### 运行
 
 ```bash
 # 加载小说 (默认代码格式)
-fish-slack -n ~/novel.txt
+python -m fish_slack -n ~/novel.txt
 
 # JSON日志格式
-fish-slack -n ~/novel.txt --format json
+python -m fish_slack -n ~/novel.txt --format json
 
 # CSV日志格式
-fish-slack -n ~/novel.txt --format csv
+python -m fish_slack -n ~/novel.txt --format csv
 
 # 错误日志格式
-fish-slack -n ~/novel.txt --format error
+python -m fish_slack -n ~/novel.txt --format error
 ```
+
+> **注意**: 本工具暂未发布到 PyPI,需要通过 GitHub 安装。
 
 ### 快捷键
 
