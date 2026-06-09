@@ -1,8 +1,37 @@
 """小说内容管理和渲染"""
 
 import os
+import subprocess
 from pathlib import Path
 from typing import Optional
+
+
+def convert_gbk_to_utf8(source_path: str, dest_path: str = None) -> str:
+    """将 GBK 编码的小说文件转换为 UTF-8
+
+    Args:
+        source_path: 源文件路径（GBK 编码）
+        dest_path: 目标文件路径，默认为源文件同名+.utf8.txt
+
+    Returns:
+        转换后的文件路径
+    """
+    if dest_path is None:
+        source = Path(source_path)
+        dest_path = str(source.parent / f"{source.stem}.utf8{source.suffix}")
+
+    result = subprocess.run(
+        ['iconv', '-f', 'GBK', '-t', 'UTF-8', source_path],
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"iconv 转换失败: {result.stderr}")
+
+    with open(dest_path, 'w', encoding='utf-8') as f:
+        f.write(result.stdout)
+
+    return dest_path
 
 
 class NovelReader:
@@ -36,6 +65,50 @@ class NovelReader:
         self.current_pos = end
 
         return self.content[start:end]
+
+    def get_alternating_lines(self, novel_count: int = 2, code_count: int = 1, total_lines: int = 30) -> list[str]:
+        """获取交替的小说行和伪装代码行
+
+        Args:
+            novel_count: 每次获取的小说行数
+            code_count: 每次获取的伪装代码行数
+            total_lines: 总共需要的行数
+
+        Returns:
+            交替排列的字符串列表
+        """
+        import random
+        result = []
+        fake_code_templates = [
+            "// TODO: implement feature",
+            "const data = await fetch(url);",
+            "if (err) { log.error(err); }",
+            "return res.json();",
+            "app.use(cors());",
+            "function process() {",
+            "const [state, setState] = useState();",
+            "export default App;",
+            "import React from 'react';",
+            "try { await save(); } catch {}",
+            "# git push origin main",
+            "npm install --save-dev",
+            "docker build -t app .",
+            "git commit -m 'fix bug'",
+            "pytest -v tests/",
+        ]
+
+        while len(result) < total_lines and self.current_pos < len(self.content):
+            # 获取小说行
+            novel_lines = self.get_next_lines(novel_count)
+            result.extend(novel_lines)
+
+            # 添加伪装代码行
+            if len(result) < total_lines:
+                for _ in range(code_count):
+                    fake_code = random.choice(fake_code_templates)
+                    result.append(fake_code)
+
+        return result
 
     def has_more(self) -> bool:
         """是否还有更多内容"""

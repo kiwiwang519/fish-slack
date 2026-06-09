@@ -1,12 +1,20 @@
-"""生成假的工作输出,让老板以为你在用Claude Code工作"""
+"""Generate fake work output with realistic context-aware workflows"""
 
 import random
 import time
 import uuid
-from datetime import datetime
+from typing import TYPE_CHECKING, Optional
+
 from rich.console import Console
 from rich.style import Style
 from rich.text import Text
+
+if TYPE_CHECKING:
+    from fish_slack.state import ProjectState
+    from fish_slack.outputs import OutputManager
+    from fish_slack.workflows import WorkflowEngine
+    from fish_slack.screen_effects import TypingEffect
+    from fish_slack.disguises import DisguiseRenderer
 
 # 配色方案
 CLAUDE_BLUE = "cyan"
@@ -14,22 +22,6 @@ CLAUDE_GREEN = "green"
 CLAUDE_YELLOW = "yellow"
 CLAUDE_RED = "red"
 CLAUDE_DIM = "bright_black"
-
-# 假的项目/文件名
-PROJECT_NAMES = [
-    "ai-hedge-fund",
-    "data-pipeline",
-    "ml-training",
-    "api-server",
-    "web-frontend",
-    "auth-service",
-]
-
-FILE_NAMES = [
-    "main.py", "utils.py", "config.py", "models.py", "api.py",
-    "handler.py", "client.py", "server.py", "database.py", "schema.py",
-    "test_main.py", "test_utils.py", "middleware.py", "router.py",
-]
 
 REASONING_TEMPLATES = [
     "Analyzing the codebase structure to understand dependencies",
@@ -48,62 +40,32 @@ REASONING_TEMPLATES = [
     "Benchmarking critical paths for optimization opportunities",
 ]
 
-FILE_OPS = [
-    ("Creating", "Creating new file at"),
-    ("Editing", "Updating"),
-    ("Reading", "Reading"),
-    ("Deleting", "Removing"),
-    ("Renaming", "Renaming"),
-]
-
-TOOL_CALLS = [
-    "Bash: ls -la",
-    "Bash: git status",
-    "Bash: git diff",
-    "Bash: grep -r 'function' ./src",
-    "Bash: python -m pytest",
-    "Bash: curl localhost:8000/health",
-    "Bash: docker ps",
-    "Bash: kubectl get pods",
-    "Bash: aws s3 ls",
-    "Read: config.yaml",
-    "Read: requirements.txt",
-    "Glob: **/*.py",
-    "Grep: TODO",
-    "Edit: main.py",
-    "Write: utils.py",
-]
-
-AGENT_NAMES = [
-    "planner-agent",
-    "code-review-agent",
-    "test-agent",
-    "docs-agent",
-    "refactor-agent",
-]
-
-PROGRESS_STATES = [
-    "Initializing...",
-    "Fetching dependencies...",
-    "Analyzing code...",
-    "Processing...",
-    "Compiling...",
-    "Running tests...",
-    "Building...",
-    "Deploying...",
-    "Validating...",
-    "Finalizing...",
-]
-
 
 class FakeWorkGenerator:
-    def __init__(self, console: Console):
+    """Generates realistic fake Claude Code work output."""
+
+    def __init__(
+        self,
+        console: Console,
+        state: Optional["ProjectState"] = None,
+        output_manager: Optional["OutputManager"] = None,
+        workflow_engine: Optional["WorkflowEngine"] = None,
+        typing_effect: Optional["TypingEffect"] = None,
+        disguise_renderer: Optional["DisguiseRenderer"] = None,
+    ):
         self.console = console
         self.session_id = str(uuid.uuid4())[:8]
         self.line_count = 0
 
-    def print_header(self):
-        """打印Claude Code头"""
+        # Injected dependencies for advanced features
+        self.state = state
+        self.output_manager = output_manager
+        self.workflow_engine = workflow_engine
+        self.typing_effect = typing_effect
+        self.disguise_renderer = disguise_renderer
+
+    def print_header(self) -> None:
+        """Print Claude Code header."""
         self.console.print(
             f"[{CLAUDE_BLUE}]╭─[/] [bold]Welcome to[/] [bold cyan]Claude Code[/][cyan] ─[/]",
             style=Style(color=CLAUDE_BLUE)
@@ -120,33 +82,18 @@ class FakeWorkGenerator:
             f"[{CLAUDE_BLUE}]├─[/] [bold]Available Tools:[/]",
             style=Style(color=CLAUDE_BLUE)
         )
-        self.console.print(
-            f"[{CLAUDE_BLUE}]│[/]   • Bash — execute shell commands",
-            style=Style(color=CLAUDE_BLUE)
-        )
-        self.console.print(
-            f"[{CLAUDE_BLUE}]│[/]   • Grep — search file contents",
-            style=Style(color=CLAUDE_BLUE)
-        )
-        self.console.print(
-            f"[{CLAUDE_BLUE}]│[/]   • Glob — find files by pattern",
-            style=Style(color=CLAUDE_BLUE)
-        )
-        self.console.print(
-            f"[{CLAUDE_BLUE}]│[/]   • Read — read file contents",
-            style=Style(color=CLAUDE_BLUE)
-        )
-        self.console.print(
-            f"[{CLAUDE_BLUE}]│[/]   • Edit — modify files",
-            style=Style(color=CLAUDE_BLUE)
-        )
+        for tool in ["Bash", "Grep", "Glob", "Read", "Edit"]:
+            self.console.print(
+                f"[{CLAUDE_BLUE}]│[/]   • {tool}",
+                style=Style(color=CLAUDE_BLUE)
+            )
         self.console.print(
             f"[{CLAUDE_BLUE}]╰─[/]"
         )
         self.line_count += 10
 
-    def print_user_message(self, msg: str = None):
-        """打印用户消息"""
+    def print_user_message(self, msg: str = None) -> None:
+        """Print user message."""
         if msg is None:
             msg = random.choice([
                 "帮我检查一下这个函数的bug",
@@ -158,193 +105,167 @@ class FakeWorkGenerator:
                 "implement the new dashboard feature",
                 "fix the memory leak in the worker",
             ])
-        self.console.print()
-        self.console.print(
-            f"[{CLAUDE_YELLOW}]➜[/] [bold]You[/] — {msg}",
-            style=Style(color=CLAUDE_YELLOW)
-        )
-        self.console.print()
+
+        if self.disguise_renderer:
+            lines = self.disguise_renderer.render_user_message(msg)
+            for line in lines:
+                self.console.print(line)
+        else:
+            self.console.print()
+            self.console.print(
+                f"[{CLAUDE_YELLOW}]➜[/] [bold]You[/] — {msg}",
+                style=Style(color=CLAUDE_YELLOW)
+            )
+            self.console.print()
+
         self.line_count += 3
 
-    def print_thinking(self):
-        """打印思考过程"""
-        self.console.print(
-            f"[{CLAUDE_DIM}]Thinking...[/]",
-            style=Style(color=CLAUDE_DIM)
-        )
-        self.line_count += 1
-        time.sleep(random.uniform(0.5, 1.5))
+    def print_thinking(self, text: str = None) -> None:
+        """Print thinking/reasoning output."""
+        if text is None:
+            text = random.choice(REASONING_TEMPLATES)
 
-        reasoning = random.choice(REASONING_TEMPLATES)
-        self.console.print(
-            f"[{CLAUDE_DIM}]{' '*4}{reasoning}[/]",
-            style=Style(color=CLAUDE_DIM)
-        )
-        self.line_count += 1
-
-        # 有时候显示子任务
-        if random.random() > 0.5:
-            for i in range(random.randint(1, 3)):
-                task = random.choice(REASONING_TEMPLATES)
-                self.console.print(
-                    f"[{CLAUDE_DIM}]{' '*8}→ {task}[/]",
-                    style=Style(color=CLAUDE_DIM)
-                )
-                self.line_count += 1
-                time.sleep(random.uniform(0.2, 0.5))
-
-    def print_agent_start(self, agent_name: str = None):
-        """打印agent开始工作"""
-        if agent_name is None:
-            agent_name = random.choice(AGENT_NAMES)
-        self.console.print()
-        self.console.print(
-            f"[{CLAUDE_BLUE}][{agent_name}][/] [dim]Starting...[/]",
-            style=Style(color=CLAUDE_BLUE)
-        )
-        self.line_count += 2
-
-    def print_agent_reasoning(self):
-        """打印agent推理过程"""
-        for _ in range(random.randint(2, 5)):
-            reasoning = random.choice(REASONING_TEMPLATES)
+        if self.disguise_renderer:
+            lines = self.disguise_renderer.render_thinking(text)
+            for line in lines:
+                self.console.print(line)
+            self.line_count += len(lines)
+        else:
             self.console.print(
-                f"[{CLAUDE_BLUE}][{random.choice(AGENT_NAMES)}][/] [dim]{reasoning}[/]",
-                style=Style(color=CLAUDE_BLUE)
+                f"[{CLAUDE_DIM}]Thinking...[/]",
+                style=Style(color=CLAUDE_DIM)
             )
             self.line_count += 1
-            time.sleep(random.uniform(0.3, 0.8))
+            time.sleep(random.uniform(0.5, 1.5))
 
-    def print_progress(self):
-        """打印进度条"""
-        progress_title = random.choice(PROGRESS_STATES)
-        total = random.randint(20, 100)
-        current = random.randint(5, total - 5)
+            self.console.print(
+                f"[{CLAUDE_DIM}]{' '*4}{text}[/]",
+                style=Style(color=CLAUDE_DIM)
+            )
+            self.line_count += 1
 
-        self.console.print(
-            f"[{CLAUDE_GREEN}]{progress_title}[/] [dim]{current}/{total}[/]"
-        )
+            # Sometimes show sub-tasks
+            if random.random() > 0.5:
+                for i in range(random.randint(1, 3)):
+                    task = random.choice(REASONING_TEMPLATES)
+                    self.console.print(
+                        f"[{CLAUDE_DIM}]{' '*8}→ {task}[/]",
+                        style=Style(color=CLAUDE_DIM)
+                    )
+                    self.line_count += 1
+                    time.sleep(random.uniform(0.2, 0.5))
 
-        # 进度条
-        bar_len = 40
-        filled = int(bar_len * current / total)
-        bar = "█" * filled + "░" * (bar_len - filled)
-        self.console.print(f"  [{bar}] {int(current/total*100)}%")
-        self.line_count += 2
-        time.sleep(random.uniform(0.2, 0.5))
+    def print_tool_call(self, tool: str, command: str, output: list[str]) -> None:
+        """Print a tool call with output."""
+        if self.disguise_renderer:
+            lines = self.disguise_renderer.render_tool_call(tool, command, output)
+            for line in lines:
+                self.console.print(line)
+            self.line_count += len(lines)
+        else:
+            self.console.print(
+                f"[{CLAUDE_GREEN}]Tool:[/] [dim]{tool}: {command}[/]",
+                style=Style(color=CLAUDE_GREEN)
+            )
+            self.line_count += 1
 
-    def print_file_op(self):
-        """打印文件操作"""
-        op, verb = random.choice(FILE_OPS)
-        filename = random.choice(FILE_NAMES)
-
-        colors = {
-            "Creating": CLAUDE_GREEN,
-            "Editing": CLAUDE_YELLOW,
-            "Reading": CLAUDE_BLUE,
-            "Deleting": CLAUDE_RED,
-            "Renaming": CLAUDE_YELLOW,
-        }
-        color = colors.get(op, CLAUDE_BLUE)
-
-        self.console.print(
-            f"[{color}]{op}:[/] [dim]{filename}[/]",
-            style=Style(color=color)
-        )
-        self.line_count += 1
-
-        if random.random() > 0.6:
-            # 显示更多细节
-            lines = random.randint(3, 15)
-            for _ in range(lines):
-                code = "    " + "".join(random.choices(
-                    "abcdefghijklmnopqrstuvwxyz0123456789_()[]{}:=",
-                    k=random.randint(30, 60)
-                ))
-                self.console.print(f"[{CLAUDE_DIM}]{code}[/]", style=Style(color=CLAUDE_DIM))
-                self.line_count += 1
-
-    def print_tool_call(self):
-        """打印工具调用"""
-        tool = random.choice(TOOL_CALLS)
-        self.console.print(
-            f"[{CLAUDE_GREEN}]Tool:[/] [dim]{tool}[/]",
-            style=Style(color=CLAUDE_GREEN)
-        )
-        self.line_count += 1
-
-        # 假输出
-        if "Bash" in tool:
-            if "ls" in tool:
-                self.console.print(f"[{CLAUDE_DIM}]drwxr-xr-x  5 user  staff   160 Apr  9 10:30 .[/]")
-                self.console.print(f"[{CLAUDE_DIM}]drwxr-xr-x  8 user  staff   256 Apr  9 10:30 ..[/]")
-                self.console.print(f"[{CLAUDE_DIM}]-rw-r--r--  1 user  staff  1024 Apr  9 10:30 README.md[/]")
-                self.console.print(f"[{CLAUDE_DIM}]drwxr-xr-x 12 user  staff   384 Apr  9 10:30 src[/]")
-                self.line_count += 4
-            elif "git" in tool:
-                self.console.print(f"[{CLAUDE_DIM}]On branch main[/]")
-                self.console.print(f"[{CLAUDE_DIM}]nothing to commit, working tree clean[/]")
-                self.line_count += 2
-            elif "pytest" in tool:
-                self.console.print(f"[{CLAUDE_GREEN}]===== 15 passed in 2.34s =====[/]")
+            for line in output:
+                self.console.print(
+                    f"[{CLAUDE_DIM}]{' ' + line}[/]",
+                    style=Style(color=CLAUDE_DIM)
+                )
                 self.line_count += 1
 
         time.sleep(random.uniform(0.1, 0.4))
 
-    def print_agent_done(self):
-        """打印agent完成"""
-        agent_name = random.choice(AGENT_NAMES)
-        confidence = random.randint(60, 99)
-        self.console.print()
-        self.console.print(
-            f"[{CLAUDE_BLUE}][{agent_name}][/] [green]Completed[/] [dim]— confidence {confidence}%[/]",
-            style=Style(color=CLAUDE_BLUE)
-        )
-        self.line_count += 3
-
-    def print_summary(self):
-        """打印总结"""
-        self.console.print()
-        self.console.print(
-            f"[{CLAUDE_GREEN}]✓[/] [bold]Analysis complete[/]"
-        )
-        self.console.print()
-        self.line_count += 3
-
-    def generate_session(self, duration: int = 10):
-        """生成一段假的工作会话
+    def print_workflow_output(self, workflow_results: list[dict]) -> None:
+        """Print output from a workflow execution.
 
         Args:
-            duration: 大约持续时间(秒)
+            workflow_results: List of step results from WorkflowEngine.run_workflow
+        """
+        for step_result in workflow_results:
+            # Show thinking if enabled
+            if step_result.get("show_thinking") and step_result.get("thinking"):
+                self.print_thinking(step_result["thinking"])
+                time.sleep(random.uniform(0.3, 0.6))
+
+            # Show tool call with output
+            self.print_tool_call(
+                step_result["tool"],
+                step_result["command"],
+                step_result["output"]
+            )
+
+            # Show failure state if applicable
+            if step_result.get("failed"):
+                self.console.print(
+                    f"[{CLAUDE_RED}]! Tool call failed (expected in workflow)[/]",
+                    style=Style(color=CLAUDE_RED)
+                )
+                self.line_count += 1
+
+            time.sleep(random.uniform(0.5, 1.0))
+
+    def generate_session(self, duration: int = 10) -> None:
+        """Generate a complete fake work session.
+
+        Uses the workflow engine if available, otherwise falls back to
+        simple random output generation.
         """
         self.print_header()
         self.print_user_message()
 
         start_time = time.time()
 
-        while time.time() - start_time < duration:
-            # 随机选择一种输出类型
-            choice = random.random()
+        if self.workflow_engine and self.output_manager:
+            # Use the workflow engine for realistic context-aware output
+            while time.time() - start_time < duration:
+                results, self.state = self.workflow_engine.select_and_run()
+                self.print_workflow_output(results)
 
-            if choice < 0.15:
-                self.print_thinking()
-            elif choice < 0.30:
-                self.print_agent_start()
-                self.print_agent_reasoning()
-                self.print_agent_done()
-            elif choice < 0.45:
-                self.print_progress()
-            elif choice < 0.60:
-                self.print_file_op()
-            elif choice < 0.75:
-                self.print_tool_call()
-            else:
-                self.print_thinking()
+                time.sleep(random.uniform(1.0, 2.0))
+        else:
+            # Fallback to simple random generation
+            while time.time() - start_time < duration:
+                choice = random.random()
 
-            # 偶尔换行
-            if random.random() > 0.7:
-                self.console.print()
+                if choice < 0.3:
+                    self.print_thinking()
+                elif choice < 0.5:
+                    self.print_thinking()
+                    self.print_tool_call(
+                        "Bash",
+                        random.choice([
+                            "git status",
+                            "pytest tests/",
+                            "docker ps",
+                            "ls -la src/",
+                        ]),
+                        ["output line 1", "output line 2"]
+                    )
+                elif choice < 0.7:
+                    self.print_tool_call(
+                        "Bash",
+                        random.choice([
+                            "git diff",
+                            "kubectl get pods",
+                            "curl localhost:8000/health",
+                        ]),
+                        ["line 1", "line 2", "line 3"]
+                    )
+                else:
+                    self.print_thinking()
 
-            time.sleep(random.uniform(0.5, 1.5))
+                time.sleep(random.uniform(0.5, 1.5))
 
         self.print_summary()
+
+    def print_summary(self) -> None:
+        """Print session summary."""
+        self.console.print()
+        self.console.print(
+            f"[{CLAUDE_GREEN}]✓[/] [bold]Analysis complete[/]"
+        )
+        self.console.print()
+        self.line_count += 3
